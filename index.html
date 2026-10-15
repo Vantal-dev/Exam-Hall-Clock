@@ -2,24 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Exam Hall Wall Clock Simulator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Wall Clock" />
+  <meta name="theme-color" content="#e5e9f0" id="themeColorMeta" />
+  <title>Wall Clock</title>
   <style>
     :root {
       /* Default Theme: Classic Exam Hall (White) */
       --wall-bg: #e5e9f0;
       --wall-gradient: radial-gradient(circle at 50% 25%, #f8fafc 0%, #dde3ea 68%, #cbd2dc 100%);
       --card-bg: #ffffff;
-      --text-main: #1e293b;
+      --card-subtle: #f8fafc;
+      --text-main: #0f172a;
       --text-muted: #64748b;
       --accent: #2563eb;
       --accent-hover: #1d4ed8;
+      --accent-soft: rgba(37, 99, 235, 0.1);
       --success: #16a34a;
       --success-hover: #15803d;
+      --warning: #d97706;
       --danger: #dc2626;
       --danger-hover: #b91c1c;
       --border: #e2e8f0;
-      --clock-size: min(74vmin, 540px);
+
+      /* Reliable, container-aware clock scaling */
+      --clock-size: clamp(250px, min(48vw, 68vh), 520px);
+      --bar-scale: 1;
 
       /* Clock SVG Theme Variables */
       --bezel-stop-1: #ffffff;
@@ -68,6 +79,7 @@
       --wall-bg: #e6dfd5;
       --wall-gradient: radial-gradient(circle at 50% 25%, #f5f0e6 0%, #dfd5c6 70%, #c7b9a5 100%);
       --card-bg: #fffdf9;
+      --card-subtle: #faf5eb;
       --border: #e5dccb;
       --bezel-stop-1: #78350f;
       --bezel-stop-2: #451a03;
@@ -118,6 +130,7 @@
       --wall-bg: #1f3a2e;
       --wall-gradient: radial-gradient(circle at 50% 25%, #2b4c3e 0%, #1d352a 70%, #13241c 100%);
       --card-bg: #182c23;
+      --card-subtle: #13241c;
       --text-main: #f1f5f9;
       --text-muted: #94a3b8;
       --border: #2d4f40;
@@ -144,6 +157,7 @@
       --wall-bg: #0f172a;
       --wall-gradient: radial-gradient(circle at 50% 25%, #1e293b 0%, #0f172a 72%, #020617 100%);
       --card-bg: #1e293b;
+      --card-subtle: #0f172a;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --border: #334155;
@@ -173,10 +187,22 @@
       padding: 0;
       user-select: none;
       -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Full edge-to-edge coverage including camera cutout area */
+    html {
+      width: 100%;
+      height: 100%;
+      background-color: var(--wall-bg);
+      overscroll-behavior: none;
     }
 
     body {
+      width: 100%;
       min-height: 100vh;
+      min-height: 100lvh;
+      min-height: 100dvh;
       background: var(--wall-bg);
       background-image: var(--wall-gradient);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
@@ -185,20 +211,29 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
       transition: background 0.3s ease, color 0.3s ease;
-      overflow: hidden;
+      overflow-x: hidden;
+      overscroll-behavior: none;
+    }
+
+    .ui-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      display: inline-block;
+      vertical-align: middle;
     }
 
     /* Top Bar */
     .top-bar {
       width: 100%;
-      max-width: 1140px;
+      max-width: 1160px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 18px;
-      gap: 12px;
+      margin-bottom: 14px;
+      gap: 10px;
       flex-wrap: wrap;
       transition: opacity 0.25s ease;
     }
@@ -207,11 +242,12 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     .brand-dot {
-      width: 12px;
-      height: 12px;
+      width: 11px;
+      height: 11px;
       border-radius: 50%;
       background: var(--text-muted);
       transition: background 0.25s ease, box-shadow 0.25s ease;
@@ -223,31 +259,43 @@
       animation: pulse 2s infinite;
     }
 
+    .brand-dot.time-up {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.25);
+      animation: pulse 1s infinite;
+    }
+
     @keyframes pulse {
       0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.14); }
+      50% { transform: scale(1.15); }
     }
 
     .brand h1 {
-      font-size: 1.15rem;
+      font-size: clamp(1.05rem, 2vw, 1.2rem);
       font-weight: 700;
       letter-spacing: -0.02em;
     }
 
     .status-pill {
-      font-size: 0.76rem;
+      font-size: 0.72rem;
       font-weight: 700;
-      padding: 4px 11px;
+      padding: 4px 10px;
       border-radius: 999px;
-      background: rgba(100, 116, 139, 0.16);
+      background: rgba(100, 116, 139, 0.15);
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.04em;
+      white-space: nowrap;
     }
 
     .status-pill.running {
       background: rgba(22, 163, 74, 0.16);
       color: var(--success);
+    }
+
+    .status-pill.time-up {
+      background: rgba(220, 38, 38, 0.16);
+      color: var(--danger);
     }
 
     .top-actions {
@@ -260,14 +308,17 @@
       background: var(--card-bg);
       color: var(--text-main);
       border: 1px solid var(--border);
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-size: 0.82rem;
+      padding: 8px 13px;
+      border-radius: 9px;
+      font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
       box-shadow: 0 1px 2px rgba(0,0,0,0.04);
       transition: all 0.15s ease;
     }
@@ -275,6 +326,45 @@
     .icon-btn:hover:not(:disabled) {
       border-color: #94a3b8;
       transform: translateY(-1px);
+    }
+
+    .btn-fullscreen {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+      transition: all 0.18s ease;
+    }
+
+    .btn-fullscreen:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .btn-fullscreen .ui-icon {
+      width: 15px;
+      height: 15px;
+    }
+
+    .icon-btn.saved-flash {
+      background: var(--success);
+      color: #ffffff;
+      border-color: var(--success);
     }
 
     .icon-btn:disabled {
@@ -285,10 +375,10 @@
     /* Main Workspace Layout */
     .workspace {
       width: 100%;
-      max-width: 1140px;
+      max-width: 1160px;
       display: grid;
-      grid-template-columns: 1fr 380px;
-      gap: 32px;
+      grid-template-columns: minmax(300px, 1fr) 390px;
+      gap: 28px;
       align-items: center;
       justify-items: center;
     }
@@ -299,8 +389,9 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 20px;
+      gap: 18px;
       width: 100%;
+      min-width: 0;
       position: relative;
     }
 
@@ -308,15 +399,17 @@
       position: relative;
       width: var(--clock-size);
       height: var(--clock-size);
+      max-width: 100%;
+      aspect-ratio: 1 / 1;
       border-radius: 50%;
       box-shadow:
-        0 28px 60px rgba(15, 23, 42, 0.28),
-        0 8px 20px rgba(15, 23, 42, 0.16),
+        0 26px 56px rgba(15, 23, 42, 0.26),
+        0 8px 20px rgba(15, 23, 42, 0.15),
         inset 0 2px 4px rgba(255, 255, 255, 0.6);
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: width 0.3s ease, height 0.3s ease;
+      transition: width 0.25s ease, height 0.25s ease;
     }
 
     .clock-svg {
@@ -341,7 +434,6 @@
       filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.85));
     }
 
-    /* Protection Lock when clock is started */
     body.clock-running .draggable-arm {
       cursor: default !important;
       pointer-events: none !important;
@@ -352,51 +444,75 @@
       filter: url(#secShadow) !important;
     }
 
-    /* Transport Bar under the clock */
-    .clock-quick-bar {
+    /* =====================================================================
+       SINGLE-LINE RESPONSIVE TRANSPORT BAR
+       ===================================================================== */
+    .bottom-dock-zone {
+      width: 100%;
       display: flex;
+      justify-content: center;
       align-items: center;
-      gap: 10px;
+      overflow: visible;
+    }
+
+    .clock-quick-bar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: nowrap;
+      width: max-content;
       background: var(--card-bg);
       border: 1px solid var(--border);
-      padding: 8px 14px;
+      padding: 7px 10px;
       border-radius: 999px;
-      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.1);
-      flex-wrap: wrap;
-      justify-content: center;
-      transition: opacity 0.25s ease, transform 0.25s ease;
+      box-shadow: 0 8px 26px rgba(15, 23, 42, 0.16);
+      transform: scale(var(--bar-scale, 1));
+      transform-origin: center center;
+      transition: opacity 0.22s ease, transform 0.22s ease;
     }
 
     .floating-transport {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
+      flex-wrap: nowrap;
+      gap: 8px;
+      width: max-content;
+    }
+
+    .btn-primary-transport,
+    .btn-secondary-transport {
+      flex: 0 0 auto;
+      width: max-content;
+      min-width: max-content;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-size: 0.86rem;
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1.1;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
     }
 
     .btn-primary-transport {
-      border: none;
-      padding: 10px 24px;
-      border-radius: 999px;
-      font-size: 0.94rem;
-      font-weight: 700;
+      border: 1px solid transparent;
       color: #ffffff;
       background: var(--success);
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 4px 12px rgba(22, 163, 74, 0.28);
-      transition: all 0.15s ease;
+      box-shadow: 0 3px 10px rgba(22, 163, 74, 0.28);
     }
 
     .btn-primary-transport:hover {
       background: var(--success-hover);
-      transform: translateY(-1px);
     }
 
     .btn-primary-transport.stop-state {
       background: var(--danger);
-      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.28);
+      box-shadow: 0 3px 10px rgba(220, 38, 38, 0.28);
     }
 
     .btn-primary-transport.stop-state:hover {
@@ -404,37 +520,47 @@
     }
 
     .btn-secondary-transport {
-      background: var(--card-bg);
+      background: var(--card-subtle);
       color: var(--text-main);
       border: 1px solid var(--border);
-      padding: 10px 16px;
-      border-radius: 999px;
-      font-size: 0.86rem;
       font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
     }
 
     .btn-secondary-transport:hover {
       border-color: #94a3b8;
-      background: rgba(148, 163, 184, 0.1);
+      background: rgba(148, 163, 184, 0.14);
     }
 
-    /* Exit Fullscreen Button inside Quick Bar (only shown in Fullscreen Mode) */
+    .btn-primary-transport .ui-icon,
+    .btn-secondary-transport .ui-icon {
+      width: 15px;
+      height: 15px;
+      flex: 0 0 15px;
+    }
+
     #exitFullscreenDockBtn {
       display: none;
     }
 
     /* =====================================================================
-       PURE FULLSCREEN MODE: ONLY THE CLOCK ON SCREEN!
-       Moving pointer down below the clock reveals the bottom dock;
-       moving away hides it completely.
+       PURE FULLSCREEN MODE:
+       - Edge-to-edge full viewport (0 padding so background fills camera cutout)
+       - Hide Seconds button is removed from the fullscreen panel
+       - 1 click shows panel, another click hides it, or auto-hides after timer
        ===================================================================== */
     body.fullscreen-mode {
-      padding: 0;
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100lvh;
+      height: 100dvh;
+      padding: 0 !important;
+      margin: 0 !important;
       justify-content: center;
       align-items: center;
-      --clock-size: min(85vmin, 760px);
+      overflow: hidden;
+      --clock-size: min(86vmin, 760px);
     }
 
     body.fullscreen-mode .top-bar,
@@ -442,24 +568,24 @@
       display: none !important;
     }
 
+    /* Remove Hide/Show Seconds button from Fullscreen bottom panel */
+    body.fullscreen-mode #quickToggleSecBtn {
+      display: none !important;
+    }
+
     body.fullscreen-mode .workspace {
       grid-template-columns: 1fr;
       max-width: 100%;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       gap: 0;
     }
 
     body.fullscreen-mode .clock-stage {
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       justify-content: center;
       gap: 0;
-    }
-
-    /* Bottom hover trigger zone in fullscreen mode */
-    .bottom-dock-zone {
-      display: flex;
-      justify-content: center;
-      align-items: center;
     }
 
     body.fullscreen-mode .bottom-dock-zone {
@@ -467,27 +593,27 @@
       left: 0;
       right: 0;
       bottom: 0;
-      height: 120px;
+      height: 110px;
       z-index: 100;
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      padding-bottom: 22px;
-      pointer-events: auto;
+      padding: 0 12px max(22px, env(safe-area-inset-bottom)) 12px;
+      pointer-events: none;
     }
 
     body.fullscreen-mode .clock-quick-bar {
       opacity: 0;
       pointer-events: none;
-      transform: translateY(18px);
+      transform: translateY(16px) scale(var(--bar-scale, 1));
+      transform-origin: bottom center;
       transition: opacity 0.22s ease, transform 0.22s ease;
     }
 
-    body.fullscreen-mode .bottom-dock-zone:hover .clock-quick-bar,
     body.fullscreen-mode .clock-quick-bar.dock-visible {
       opacity: 1;
       pointer-events: auto;
-      transform: translateY(0);
+      transform: translateY(0) scale(var(--bar-scale, 1));
     }
 
     body.fullscreen-mode #exitFullscreenDockBtn {
@@ -500,12 +626,12 @@
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 20px;
+      padding: 18px 20px;
       box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      max-height: calc(100vh - 90px);
+      gap: 15px;
+      max-height: calc(100vh - 84px);
       overflow-y: auto;
     }
 
@@ -523,7 +649,7 @@
     }
 
     .section-title {
-      font-size: 0.76rem;
+      font-size: 0.75rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -531,24 +657,25 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
     }
 
     .lock-badge {
-      font-size: 0.7rem;
+      font-size: 0.69rem;
       font-weight: 700;
-      padding: 2px 8px;
+      padding: 3px 9px;
       border-radius: 999px;
       background: rgba(220, 38, 38, 0.12);
       color: var(--danger);
       display: none;
+      align-items: center;
+      gap: 4px;
+      text-transform: none;
+      letter-spacing: 0;
     }
 
     body.clock-running .lock-badge {
-      display: inline-block;
-    }
-
-    body.clock-running #amPmBadge {
-      display: none;
+      display: inline-flex;
     }
 
     /* Digital Readout & Direct Time Setter */
@@ -556,15 +683,16 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(148, 163, 184, 0.08);
+      background: var(--card-subtle);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 10px 12px;
+      padding: 9px 12px;
+      gap: 8px;
       transition: opacity 0.2s ease;
     }
 
     body.clock-running .time-controls-group {
-      opacity: 0.52;
+      opacity: 0.48;
       pointer-events: none;
     }
 
@@ -582,18 +710,18 @@
     }
 
     .time-input-group label {
-      font-size: 0.63rem;
-      font-weight: 600;
+      font-size: 0.61rem;
+      font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
       margin-bottom: 2px;
     }
 
     .time-num-input {
-      width: 52px;
+      width: 48px;
       padding: 5px 4px;
       text-align: center;
-      font-size: 1.25rem;
+      font-size: 1.18rem;
       font-weight: 700;
       font-family: "JetBrains Mono", "SF Mono", Consolas, monospace;
       color: var(--text-main);
@@ -609,7 +737,7 @@
     }
 
     .colon {
-      font-size: 1.25rem;
+      font-size: 1.18rem;
       font-weight: 700;
       color: var(--text-muted);
       margin-top: 12px;
@@ -619,13 +747,13 @@
     .slider-row {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
 
     .slider-header {
       display: flex;
       justify-content: space-between;
-      font-size: 0.8rem;
+      font-size: 0.79rem;
       font-weight: 600;
     }
 
@@ -648,12 +776,12 @@
     }
 
     .preset-chip {
-      background: rgba(148, 163, 184, 0.1);
+      background: var(--card-subtle);
       color: var(--text-main);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 6px 5px;
-      font-size: 0.76rem;
+      padding: 6px 4px;
+      font-size: 0.75rem;
       font-weight: 600;
       cursor: pointer;
       text-align: center;
@@ -663,49 +791,77 @@
     .preset-chip:hover:not(:disabled) {
       border-color: var(--accent);
       color: var(--accent);
-      background: rgba(37, 99, 235, 0.06);
+      background: var(--accent-soft);
     }
 
-    /* Themes Selector Grid */
+    /* =====================================================================
+       PROFESSIONAL MINI-CLOCK SVG THEME CARDS
+       ===================================================================== */
     .theme-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 7px;
+      gap: 8px;
     }
 
     .theme-btn {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 9px;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 10px;
       border: 1.5px solid var(--border);
-      background: rgba(148, 163, 184, 0.06);
+      background: var(--card-subtle);
       color: var(--text-main);
-      font-size: 0.78rem;
-      font-weight: 600;
       cursor: pointer;
       transition: all 0.15s ease;
       text-align: left;
+      position: relative;
     }
 
     .theme-btn:hover {
       border-color: #94a3b8;
+      transform: translateY(-1px);
     }
 
     .theme-btn.active {
       border-color: var(--accent);
-      background: rgba(37, 99, 235, 0.1);
+      background: var(--accent-soft);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+    }
+
+    .theme-mini-clock {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      display: block;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.18));
+    }
+
+    .theme-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .theme-name {
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .theme-btn.active .theme-name {
       color: var(--accent);
     }
 
-    .theme-swatch {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      border: 2px solid rgba(0,0,0,0.15);
-      position: relative;
+    .theme-desc {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Toggles */
@@ -713,9 +869,33 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.84rem;
+      font-size: 0.83rem;
       font-weight: 500;
       padding: 2px 0;
+      gap: 8px;
+    }
+
+    .toggle-label-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mini-action-btn {
+      background: var(--card-subtle);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.69rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .mini-action-btn:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
     }
 
     .switch {
@@ -723,6 +903,7 @@
       display: inline-block;
       width: 42px;
       height: 22px;
+      flex-shrink: 0;
     }
 
     .switch input {
@@ -761,9 +942,83 @@
       transform: translateX(20px);
     }
 
-    /* Exam Hall Whiteboard Card */
+    /* =====================================================================
+       EDITABLE EXAM SESSION TRACKER (HOURS & MINUTES FIELDS + PROGRESS)
+       ===================================================================== */
+    .duration-editor {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card-subtle);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      gap: 8px;
+    }
+
+    .duration-fields {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dur-field {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dur-input {
+      width: 46px;
+      padding: 4px 4px;
+      text-align: center;
+      font-size: 0.98rem;
+      font-weight: 700;
+      font-family: "JetBrains Mono", "SF Mono", Consolas, monospace;
+      color: var(--text-main);
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      outline: none;
+    }
+
+    .dur-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+
+    .dur-unit {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .dur-step-btns {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .step-btn {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 7px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .step-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
     .whiteboard-card {
-      background: rgba(148, 163, 184, 0.08);
+      background: var(--card-subtle);
       border: 1.5px solid var(--border);
       border-radius: 10px;
       padding: 10px 12px;
@@ -783,32 +1038,50 @@
     .wb-value {
       font-weight: 700;
       font-family: "JetBrains Mono", "SF Mono", Consolas, monospace;
-      font-size: 0.88rem;
+      font-size: 0.86rem;
+      font-variant-numeric: tabular-nums;
     }
 
-    .duration-select {
-      padding: 3px 7px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--card-bg);
-      color: var(--text-main);
-      font-size: 0.76rem;
-      font-weight: 600;
-      cursor: pointer;
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(148, 163, 184, 0.22);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 2px;
     }
 
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width 0.25s linear, background 0.25s ease;
+    }
+
+    .progress-fill.near-end {
+      background: var(--warning);
+    }
+
+    .progress-fill.finished {
+      background: var(--danger);
+    }
+
+    /* Responsive adjustments */
     @media (max-width: 920px) {
-      body {
+      :root {
+        --clock-size: clamp(240px, min(78vw, 52vh), 420px);
+      }
+      body:not(.fullscreen-mode) {
         overflow-y: auto;
+        justify-content: flex-start;
       }
       .workspace {
         grid-template-columns: 1fr;
+        gap: 20px;
       }
       .control-panel {
         max-height: none;
-      }
-      :root {
-        --clock-size: min(80vmin, 430px);
       }
     }
   </style>
@@ -819,44 +1092,46 @@
   <header class="top-bar">
     <div class="brand">
       <span id="statusDot" class="brand-dot"></span>
-      <h1>Exam Hall Wall Clock</h1>
+      <h1>Wall Clock</h1>
       <span id="statusPill" class="status-pill">Stopped · Ready to Set</span>
     </div>
     <div class="top-actions">
-      <button type="button" class="icon-btn" id="fullscreenBtn" title="Pure Clock Fullscreen (Move mouse to bottom of screen for controls)">
-        <span>⛶ Full Screen (Clock Only)</span>
+      <button type="button" class="btn-fullscreen" id="fullscreenBtn" title="Enter Full Screen">
+        <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="15 3 21 3 21 9" />
+          <polyline points="9 21 3 21 3 15" />
+          <line x1="21" y1="3" x2="14" y2="10" />
+          <line x1="3" y1="21" x2="10" y2="14" />
+        </svg>
+        <span>Full Screen</span>
       </button>
     </div>
   </header>
 
   <main class="workspace">
-    <!-- Left / Center: The Exam Hall Wall Clock -->
+    <!-- Left / Center: The Wall Clock -->
     <section class="clock-stage">
       <div class="clock-wrapper">
-        <svg id="wallClockSvg" class="clock-svg" viewBox="0 0 500 500" aria-label="Exam Hall Wall Clock">
+        <svg id="wallClockSvg" class="clock-svg" viewBox="0 0 500 500" aria-label="Wall Clock">
           <defs>
-            <!-- Outer Frame Bezel Gradient -->
             <linearGradient id="bezelOuter" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" style="stop-color: var(--bezel-stop-1);" />
               <stop offset="50%" style="stop-color: var(--bezel-stop-2);" />
               <stop offset="100%" style="stop-color: var(--bezel-stop-3);" />
             </linearGradient>
 
-            <!-- Inner Recessed Bezel Ring -->
             <linearGradient id="bezelInner" x1="100%" y1="100%" x2="0%" y2="0%">
               <stop offset="0%" style="stop-color: var(--inner-rim-1);" />
               <stop offset="65%" style="stop-color: var(--inner-rim-2);" />
               <stop offset="100%" style="stop-color: var(--inner-rim-3);" />
             </linearGradient>
 
-            <!-- Dial Surface -->
             <radialGradient id="dialFace" cx="50%" cy="45%" r="52%">
               <stop offset="0%" style="stop-color: var(--dial-center);" />
               <stop offset="88%" style="stop-color: var(--dial-mid);" />
               <stop offset="100%" style="stop-color: var(--dial-edge);" />
             </radialGradient>
 
-            <!-- Realistic Hand Drop Shadow -->
             <filter id="handShadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="2" dy="4" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.32" />
             </filter>
@@ -873,13 +1148,16 @@
           <!-- Main Clock Face -->
           <circle id="clockDial" cx="250" cy="250" r="212" fill="url(#dialFace)" style="stroke: var(--bezel-stroke);" stroke-width="1" />
 
-          <!-- Subtle Exam Hall Quartz Branding on Dial -->
+          <!-- Subtle Quartz Branding on Dial -->
           <text x="250" y="138" text-anchor="middle" style="fill: var(--dial-subtext);" font-size="11" font-weight="700" letter-spacing="3.5">QUARTZ</text>
 
-          <!-- Optional Target Exam Finish Marker Pin -->
+          <!-- Optional Target Finish Marker Pins (Hour & Minute Finish Targets) -->
           <g id="targetMarkerGroup" style="display: none;">
-            <g id="targetPin" transform="rotate(0 250 250)">
-              <polygon points="250,42 243,28 257,28" fill="#2563eb" opacity="0.85" />
+            <g id="targetHourPin" transform="rotate(0 250 250)">
+              <polygon points="250,43 243,28 257,28" fill="#2563eb" opacity="0.9" />
+            </g>
+            <g id="targetMinutePin" transform="rotate(0 250 250)">
+              <circle cx="250" cy="34" r="4.5" fill="#16a34a" opacity="0.85" />
             </g>
           </g>
 
@@ -891,19 +1169,19 @@
 
           <!-- HOUR ARM (Draggable only when stopped) -->
           <g id="hourArmGroup" class="draggable-arm" filter="url(#handShadow)" transform="rotate(270 250 250)">
-            <line x1="250" y1="280" x2="250" y2="128" stroke="transparent" stroke-width="32" stroke-linecap="round" />
+            <line x1="250" y1="280" x2="250" y2="128" stroke="transparent" stroke-width="36" stroke-linecap="round" />
             <polygon points="244,282 256,282 253.5,126 250,118 246.5,126" style="fill: var(--hour-hand);" />
           </g>
 
           <!-- MINUTE ARM (Draggable only when stopped) -->
           <g id="minuteArmGroup" class="draggable-arm" filter="url(#handShadow)" transform="rotate(0 250 250)">
-            <line x1="250" y1="288" x2="250" y2="74" stroke="transparent" stroke-width="28" stroke-linecap="round" />
+            <line x1="250" y1="288" x2="250" y2="74" stroke="transparent" stroke-width="32" stroke-linecap="round" />
             <polygon points="245.5,288 254.5,288 252.2,76 250,68 247.8,76" style="fill: var(--minute-hand);" />
           </g>
 
           <!-- SECOND ARM (Toggleable, Draggable only when stopped) -->
           <g id="secondArmGroup" class="draggable-arm" filter="url(#secShadow)" transform="rotate(0 250 250)">
-            <line x1="250" y1="295" x2="250" y2="66" stroke="transparent" stroke-width="20" stroke-linecap="round" />
+            <line x1="250" y1="295" x2="250" y2="66" stroke="transparent" stroke-width="24" stroke-linecap="round" />
             <line x1="250" y1="296" x2="250" y2="250" style="stroke: var(--second-hand);" stroke-width="3.6" stroke-linecap="round" />
             <line x1="250" y1="250" x2="250" y2="66" style="stroke: var(--second-hand);" stroke-width="2.1" stroke-linecap="round" />
             <circle cx="250" cy="250" r="6.5" style="fill: var(--second-hand);" />
@@ -918,36 +1196,65 @@
         </svg>
       </div>
 
-      <!-- Bottom Transport Dock (In Fullscreen Mode, hidden until pointer moves down below the clock) -->
+      <!-- Single-Line Auto-Scaling Transport Dock (Hide Seconds removed in Fullscreen via CSS) -->
       <div id="bottomDockZone" class="bottom-dock-zone">
         <div id="clockQuickBar" class="clock-quick-bar">
           <div class="floating-transport">
             <button type="button" id="startStopBtn" class="btn-primary-transport">
-              <span id="startStopIcon">▶</span>
+              <svg id="playSvgIcon" class="ui-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M6.5 4.8C5.6 4.2 4.5 4.85 4.5 5.9v12.2c0 1.05 1.1 1.7 2 1.1l10.4-6.1c.9-.52.9-1.68 0-2.2L6.5 4.8z" />
+              </svg>
+              <svg id="stopSvgIcon" class="ui-icon" viewBox="0 0 24 24" fill="currentColor" style="display: none;" aria-hidden="true">
+                <rect x="5.5" y="4.5" width="4.5" height="15" rx="1.4" />
+                <rect x="14" y="4.5" width="4.5" height="15" rx="1.4" />
+              </svg>
               <span id="startStopText">Start Clock</span>
             </button>
-            <button type="button" id="resetToSavedBtn" class="btn-secondary-transport" title="Return to set start time">
-              ↺ Reset
+
+            <button type="button" id="resetToSavedBtn" class="btn-secondary-transport" title="Return to saved start time">
+              <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              <span>Reset</span>
             </button>
+
             <button type="button" id="quickToggleSecBtn" class="btn-secondary-transport" title="Show or Hide Seconds Arm">
-              Hide Seconds
+              <svg id="secEyeIcon" class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <line x1="12" y1="12" x2="12" y2="6" />
+                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+              </svg>
+              <span id="quickToggleSecText">Hide Seconds</span>
             </button>
+
             <button type="button" id="exitFullscreenDockBtn" class="btn-secondary-transport" title="Exit Fullscreen">
-              ✕ Exit Full Screen
+              <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="4 14 10 14 10 20" />
+                <polyline points="20 10 14 10 14 4" />
+                <line x1="14" y1="10" x2="21" y2="3" />
+                <line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
+              <span>Exit Full Screen</span>
             </button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Right Control Panel: Themes, Time Controls (Locked when Running), & Settings -->
+    <!-- Right Control Panel: Themes, Time Controls (Locked when Running), & Editable Exam Session -->
     <aside class="control-panel">
       <!-- 1. Set Clock Time (Arms & Numeric — Automatically Locked While Running) -->
       <div class="panel-section">
         <div class="section-title">
           <span>Set Clock Time</span>
-          <span id="amPmBadge" style="color: var(--accent);">12H Wall Clock</span>
-          <span class="lock-badge">🔒 Locked While Running</span>
+          <span class="lock-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <span>Locked While Running</span>
+          </span>
         </div>
 
         <div class="time-controls-group" style="display: flex; flex-direction: column; gap: 10px;">
@@ -968,8 +1275,14 @@
                 <input id="secondInput" class="time-num-input" type="number" min="0" max="59" value="00" />
               </div>
             </div>
-            <button type="button" id="setAsBookmarkBtn" class="icon-btn" title="Save current dial position as your Reset point">
-              Save Start
+            <button type="button" id="setAsBookmarkBtn" class="icon-btn" title="Save this time as your default opening & reset start time">
+              <svg id="saveStartBookmarkIcon" class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+              <svg id="saveStartCheckIcon" class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span id="saveStartBtnText">Save Start</span>
             </button>
           </div>
 
@@ -990,7 +1303,7 @@
             <input id="minuteSlider" type="range" min="0" max="59" step="1" value="0" />
           </div>
 
-          <!-- Common Exam Hall Start Presets -->
+          <!-- Common Start Presets -->
           <div class="preset-grid">
             <button type="button" class="preset-chip" data-h="9" data-m="0">09:00</button>
             <button type="button" class="preset-chip" data-h="10" data-m="0">10:00</button>
@@ -1004,40 +1317,119 @@
         </div>
       </div>
 
-      <!-- 2. Wall & Clock Themes -->
+      <!-- 2. Wall & Clock Themes (With Custom Miniature Vector Clock Previews) -->
       <div class="panel-section">
         <div class="section-title">
           <span>Clock & Hall Themes</span>
         </div>
         <div class="theme-grid">
           <button type="button" class="theme-btn active" data-theme-val="classic">
-            <span class="theme-swatch" style="background: linear-gradient(135deg, #ffffff 50%, #dc2626 50%);"></span>
-            <span>Classic White</span>
+            <svg class="theme-mini-clock" viewBox="0 0 36 36" aria-hidden="true">
+              <circle cx="18" cy="18" r="16.5" fill="#ffffff" stroke="#cbd5e1" stroke-width="2.5" />
+              <line x1="18" y1="5" x2="18" y2="7.5" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="31" y1="18" x2="28.5" y2="18" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="31" x2="18" y2="28.5" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="5" y1="18" x2="7.5" y2="18" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="11.5" y2="18" stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="18" y2="8.5" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="24.5" y2="22" stroke="#dc2626" stroke-width="1.3" stroke-linecap="round" />
+              <circle cx="18" cy="18" r="1.8" fill="#dc2626" />
+            </svg>
+            <div class="theme-meta">
+              <span class="theme-name">Classic White</span>
+              <span class="theme-desc">Standard Exam Hall</span>
+            </div>
           </button>
+
           <button type="button" class="theme-btn" data-theme-val="steel">
-            <span class="theme-swatch" style="background: linear-gradient(135deg, #cbd5e1 50%, #0284c7 50%);"></span>
-            <span>Silver Steel</span>
+            <svg class="theme-mini-clock" viewBox="0 0 36 36" aria-hidden="true">
+              <circle cx="18" cy="18" r="16.5" fill="#f8fafc" stroke="#64748b" stroke-width="3" />
+              <line x1="18" y1="5" x2="18" y2="7.5" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="31" y1="18" x2="28.5" y2="18" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="31" x2="18" y2="28.5" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="5" y1="18" x2="7.5" y2="18" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="11.5" y2="18" stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="18" y2="8.5" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="24.5" y2="22" stroke="#0284c7" stroke-width="1.4" stroke-linecap="round" />
+              <circle cx="18" cy="18" r="1.8" fill="#0284c7" />
+            </svg>
+            <div class="theme-meta">
+              <span class="theme-name">Silver Steel</span>
+              <span class="theme-desc">Testing Center</span>
+            </div>
           </button>
+
           <button type="button" class="theme-btn" data-theme-val="ivory">
-            <span class="theme-swatch" style="background: linear-gradient(135deg, #fef3c7 50%, #78350f 50%);"></span>
-            <span>Warm Lecture</span>
+            <svg class="theme-mini-clock" viewBox="0 0 36 36" aria-hidden="true">
+              <circle cx="18" cy="18" r="16.5" fill="#fef3c7" stroke="#5c2808" stroke-width="3" />
+              <line x1="18" y1="5" x2="18" y2="7.5" stroke="#451a03" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="31" y1="18" x2="28.5" y2="18" stroke="#451a03" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="31" x2="18" y2="28.5" stroke="#451a03" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="5" y1="18" x2="7.5" y2="18" stroke="#451a03" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="11.5" y2="18" stroke="#270e02" stroke-width="2.2" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="18" y2="8.5" stroke="#270e02" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="24.5" y2="22" stroke="#b91c1c" stroke-width="1.3" stroke-linecap="round" />
+              <circle cx="18" cy="18" r="1.8" fill="#b45309" />
+            </svg>
+            <div class="theme-meta">
+              <span class="theme-name">Warm Lecture</span>
+              <span class="theme-desc">Ivory & Walnut</span>
+            </div>
           </button>
+
           <button type="button" class="theme-btn" data-theme-val="swiss">
-            <span class="theme-swatch" style="background: linear-gradient(135deg, #ffffff 50%, #0f172a 50%);"></span>
-            <span>Swiss Station</span>
+            <svg class="theme-mini-clock" viewBox="0 0 36 36" aria-hidden="true">
+              <circle cx="18" cy="18" r="16.5" fill="#ffffff" stroke="#0f172a" stroke-width="3" />
+              <line x1="18" y1="5" x2="18" y2="8" stroke="#000000" stroke-width="2.1" />
+              <line x1="31" y1="18" x2="28" y2="18" stroke="#000000" stroke-width="2.1" />
+              <line x1="18" y1="31" x2="18" y2="28" stroke="#000000" stroke-width="2.1" />
+              <line x1="5" y1="18" x2="8" y2="18" stroke="#000000" stroke-width="2.1" />
+              <line x1="18" y1="18" x2="11.5" y2="18" stroke="#000000" stroke-width="2.4" />
+              <line x1="18" y1="18" x2="18" y2="8.5" stroke="#000000" stroke-width="2" />
+              <line x1="18" y1="18" x2="24" y2="22" stroke="#e11d48" stroke-width="1.5" />
+              <circle cx="24" cy="22" r="2" fill="#e11d48" />
+            </svg>
+            <div class="theme-meta">
+              <span class="theme-name">Swiss Station</span>
+              <span class="theme-desc">High Contrast</span>
+            </div>
           </button>
+
           <button type="button" class="theme-btn" data-theme-val="chalkboard">
-            <span class="theme-swatch" style="background: linear-gradient(135deg, #1f3a2e 50%, #ffffff 50%);"></span>
-            <span>Chalkboard Hall</span>
+            <svg class="theme-mini-clock" viewBox="0 0 36 36" aria-hidden="true">
+              <rect x="0" y="0" width="36" height="36" rx="18" fill="#1f3a2e" />
+              <circle cx="18" cy="18" r="13.5" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.8" />
+              <line x1="18" y1="18" x2="12.5" y2="18" stroke="#0f172a" stroke-width="2" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="18" y2="9.5" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="23" y2="21.5" stroke="#dc2626" stroke-width="1.2" stroke-linecap="round" />
+            </svg>
+            <div class="theme-meta">
+              <span class="theme-name">Chalkboard Hall</span>
+              <span class="theme-desc">Green Classroom</span>
+            </div>
           </button>
+
           <button type="button" class="theme-btn" data-theme-val="midnight">
-            <span class="theme-swatch" style="background: linear-gradient(135deg, #0f172a 50%, #38bdf8 50%);"></span>
-            <span>Midnight Dark</span>
+            <svg class="theme-mini-clock" viewBox="0 0 36 36" aria-hidden="true">
+              <circle cx="18" cy="18" r="16.5" fill="#0f172a" stroke="#334155" stroke-width="3" />
+              <line x1="18" y1="5" x2="18" y2="7.5" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="31" y1="18" x2="28.5" y2="18" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="31" x2="18" y2="28.5" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="5" y1="18" x2="7.5" y2="18" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="11.5" y2="18" stroke="#f8fafc" stroke-width="2.2" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="18" y2="8.5" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" />
+              <line x1="18" y1="18" x2="24.5" y2="22" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round" />
+              <circle cx="18" cy="18" r="1.8" fill="#38bdf8" />
+            </svg>
+            <div class="theme-meta">
+              <span class="theme-name">Midnight Dark</span>
+              <span class="theme-desc">Low-Glare Study</span>
+            </div>
           </button>
         </div>
       </div>
 
-      <!-- 3. Watch Arms & Movement -->
+      <!-- 3. Watch Arms & Mobile Settings -->
       <div class="panel-section">
         <div class="section-title">
           <span>Watch Arms & Movement</span>
@@ -1060,26 +1452,49 @@
         </div>
 
         <div class="toggle-row">
-          <span>Hall Clock Tick Sound</span>
+          <div class="toggle-label-group">
+            <span>Hall Clock Tick Sound</span>
+            <button type="button" id="testTickBtn" class="mini-action-btn" title="Preview the mechanical quartz tick sound">Test Tick</button>
+          </div>
           <label class="switch">
             <input type="checkbox" id="tickSoundToggle" />
             <span class="slider-toggle"></span>
           </label>
         </div>
+
+        <div class="toggle-row">
+          <span>Keep Screen Awake</span>
+          <label class="switch">
+            <input type="checkbox" id="wakeLockToggle" checked />
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
       </div>
 
-      <!-- 4. Exam Hall Whiteboard Reference -->
+      <!-- 4. Editable Exam Session Tracker (Custom Hours & Minutes) -->
       <div class="panel-section">
         <div class="section-title">
-          <span>Exam Session Tracker</span>
-          <select id="examDurationSelect" class="duration-select" aria-label="Exam Duration">
-            <option value="60">1 hr Exam</option>
-            <option value="90">1.5 hr Exam</option>
-            <option value="120" selected>2 hr Exam</option>
-            <option value="150">2.5 hr Exam</option>
-            <option value="180">3 hr Exam</option>
-            <option value="0">Free Practice</option>
-          </select>
+          <span>Exam Session Duration</span>
+          <span id="sessionModeLabel" style="color: var(--accent);">2h</span>
+        </div>
+
+        <!-- Editable Hours & Minutes Fields + Quick Step Buttons -->
+        <div class="duration-editor">
+          <div class="duration-fields">
+            <div class="dur-field">
+              <input id="examDurHoursInput" class="dur-input" type="number" min="0" max="12" value="2" aria-label="Exam Duration Hours" />
+              <span class="dur-unit">hr</span>
+            </div>
+            <div class="dur-field">
+              <input id="examDurMinutesInput" class="dur-input" type="number" min="0" max="59" value="0" aria-label="Exam Duration Minutes" />
+              <span class="dur-unit">min</span>
+            </div>
+          </div>
+
+          <div class="dur-step-btns">
+            <button type="button" class="step-btn" id="minus15Btn" title="Subtract 15 minutes">-15m</button>
+            <button type="button" class="step-btn" id="plus15Btn" title="Add 15 minutes">+15m</button>
+          </div>
         </div>
 
         <div class="whiteboard-card">
@@ -1092,15 +1507,33 @@
             <span id="wbEndTime" class="wb-value">11:00:00</span>
           </div>
           <div class="wb-row">
-            <span>Elapsed:</span>
+            <span>Elapsed Time:</span>
             <span id="wbElapsed" class="wb-value" style="color: var(--accent);">00:00:00</span>
+          </div>
+          <div class="wb-row" id="wbRemainingRow">
+            <span>Remaining:</span>
+            <span id="wbRemaining" class="wb-value">02:00:00</span>
+          </div>
+          <div class="progress-track" id="examProgressTrack">
+            <div class="progress-fill" id="examProgressFill"></div>
           </div>
         </div>
 
         <div class="toggle-row">
-          <span>Show Finish Marker Pin on Rim</span>
+          <span>Show Finish Target Pins on Rim</span>
           <label class="switch">
             <input type="checkbox" id="showTargetPinToggle" checked />
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-label-group">
+            <span>End-of-Time Bell</span>
+            <button type="button" id="testBellBtn" class="mini-action-btn" title="Test one calm (2 + 2) bell sequence">Test Bell</button>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="endBellToggle" checked />
             <span class="slider-toggle"></span>
           </label>
         </div>
@@ -1149,52 +1582,238 @@
         numbersContainer.appendChild(text);
       }
 
-      // --- 2. Clock State ---
-      let currentTotalSeconds = 9 * 3600; // Default 09:00:00
-      let savedStartSeconds = 9 * 3600;
+      // --- 2. Clock State & Persistent LocalStorage Loading ---
+      const STORAGE_KEY = 'examHallWallClock_v6_state';
+
+      let savedStartSeconds = 9 * 3600; // Default 09:00:00
+      let currentTotalSeconds = 9 * 3600;
       let elapsedSeconds = 0;
       let isRunning = false;
       let showSecondsArm = true;
       let smoothSweep = false;
       let playTickSound = false;
-      let examDurationMinutes = 120;
+      let keepScreenAwake = true;
+      let examDurationMinutes = 120; // Default 2 hrs
       let showTargetPin = true;
+      let playEndBell = true;
+      let activeTheme = 'classic';
+      let bellAlreadyRung = false;
+      let tickParity = 0;
+
+      const THEME_BG_COLORS = {
+        classic: '#e5e9f0',
+        steel: '#cfd8e3',
+        ivory: '#e6dfd5',
+        swiss: '#dfe3e8',
+        chalkboard: '#1f3a2e',
+        midnight: '#0f172a'
+      };
+
+      function loadSavedState() {
+        try {
+          const raw =
+            localStorage.getItem(STORAGE_KEY) ||
+            localStorage.getItem('examHallWallClock_v5_state') ||
+            localStorage.getItem('examHallWallClock_v4_state');
+          if (!raw) return;
+          const data = JSON.parse(raw);
+          if (typeof data.savedStartSeconds === 'number') {
+            savedStartSeconds = data.savedStartSeconds;
+            currentTotalSeconds = data.savedStartSeconds;
+          }
+          if (typeof data.showSecondsArm === 'boolean') showSecondsArm = data.showSecondsArm;
+          if (typeof data.smoothSweep === 'boolean') smoothSweep = data.smoothSweep;
+          if (typeof data.playTickSound === 'boolean') playTickSound = data.playTickSound;
+          if (typeof data.keepScreenAwake === 'boolean') keepScreenAwake = data.keepScreenAwake;
+          if (typeof data.examDurationMinutes === 'number') examDurationMinutes = data.examDurationMinutes;
+          if (typeof data.showTargetPin === 'boolean') showTargetPin = data.showTargetPin;
+          if (typeof data.playEndBell === 'boolean') playEndBell = data.playEndBell;
+          if (typeof data.activeTheme === 'string') activeTheme = data.activeTheme;
+        } catch (e) {}
+      }
+
+      function savePersistentState() {
+        try {
+          const payload = {
+            savedStartSeconds,
+            showSecondsArm,
+            smoothSweep,
+            playTickSound,
+            keepScreenAwake,
+            examDurationMinutes,
+            showTargetPin,
+            playEndBell,
+            activeTheme
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (e) {}
+      }
+
+      loadSavedState();
 
       let lastFrameTime = null;
       let lastWholeSecond = -1;
       let rafId = null;
+      let wakeLockSentinel = null;
 
-      // Audio Context for optional Quartz Tick Sound
-      let audioCtx = null;
-      function triggerTickSound() {
-        if (!playTickSound) return;
+      // Mobile Screen Wake Lock API
+      async function requestWakeLock() {
+        if (!keepScreenAwake || !('wakeLock' in navigator)) return;
         try {
-          if (!audioCtx) {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            audioCtx = new AudioContextClass();
+          if (!wakeLockSentinel) {
+            wakeLockSentinel = await navigator.wakeLock.request('screen');
+            wakeLockSentinel.addEventListener('release', () => {
+              wakeLockSentinel = null;
+            });
           }
-          if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-          }
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(950, audioCtx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + 0.018);
+        } catch (err) {}
+      }
 
-          gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.018);
-
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start();
-          osc.stop(audioCtx.currentTime + 0.02);
-        } catch (e) {
-          // Ignore audio error
+      async function releaseWakeLock() {
+        if (wakeLockSentinel) {
+          try {
+            await wakeLockSentinel.release();
+          } catch (e) {}
+          wakeLockSentinel = null;
         }
       }
 
-      // --- 3. DOM Elements ---
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && (isRunning || document.body.classList.contains('fullscreen-mode'))) {
+          requestWakeLock();
+        }
+      });
+
+      // --- 3. Realistic Acoustic Quartz Tick & Calm Warm "(2 + 2) + (2 + 2)" Bell ---
+      let audioCtx = null;
+      let noiseBuffer = null;
+
+      function getAudioContext() {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContextClass();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        if (!noiseBuffer && audioCtx) {
+          // Pre-build a 50ms high-resolution impulse/noise buffer for realistic mechanical clock escapement clicks
+          const sampleRate = audioCtx.sampleRate;
+          const length = Math.floor(sampleRate * 0.05);
+          noiseBuffer = audioCtx.createBuffer(1, length, sampleRate);
+          const data = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < length; i++) {
+            // Exponentially decaying mechanical transient + micro-secondary gear tooth rebound at ~6ms
+            const t = i / sampleRate;
+            const primaryEnv = Math.exp(-t / 0.0022);
+            const reboundEnv = t > 0.0055 ? 0.42 * Math.exp(-(t - 0.0055) / 0.0032) : 0;
+            data[i] = (Math.random() * 2 - 1) * (primaryEnv + reboundEnv);
+          }
+        }
+        return audioCtx;
+      }
+
+      // Realistic Physical Quartz Wall Clock Tick-Tock Sound
+      function triggerTickSound(forcePlay = false) {
+        if (!playTickSound && !forcePlay) return;
+        try {
+          const ctx = getAudioContext();
+          const now = ctx.currentTime + 0.002;
+          tickParity = (tickParity + 1) % 2;
+
+          // 1) Mechanical Escapement Tooth Click (Bandpass-filtered transient noise)
+          const noiseSrc = ctx.createBufferSource();
+          noiseSrc.buffer = noiseBuffer;
+
+          const bandpass = ctx.createBiquadFilter();
+          bandpass.type = 'bandpass';
+          // Subtle alternation between "Tick" (1280 Hz) and "Tock" (1160 Hz) like a real Lavet stepping gear
+          bandpass.frequency.setValueAtTime(tickParity === 0 ? 1280 : 1160, now);
+          bandpass.Q.setValueAtTime(3.2, now);
+
+          const clickGain = ctx.createGain();
+          clickGain.gain.setValueAtTime(0.38, now);
+          clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
+
+          noiseSrc.connect(bandpass);
+          bandpass.connect(clickGain);
+          clickGain.connect(ctx.destination);
+          noiseSrc.start(now);
+          noiseSrc.stop(now + 0.032);
+
+          // 2) Hollow Plastic Wall-Clock Housing Body Thump (Low-Mid Resonance)
+          const bodyOsc = ctx.createOscillator();
+          const bodyGain = ctx.createGain();
+          bodyOsc.type = 'sine';
+          const bodyFreq = tickParity === 0 ? 178 : 162;
+          bodyOsc.frequency.setValueAtTime(bodyFreq, now);
+          bodyOsc.frequency.exponentialRampToValueAtTime(68, now + 0.024);
+
+          bodyGain.gain.setValueAtTime(0.14, now);
+          bodyGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.026);
+
+          bodyOsc.connect(bodyGain);
+          bodyGain.connect(ctx.destination);
+          bodyOsc.start(now);
+          bodyOsc.stop(now + 0.028);
+        } catch (e) {}
+      }
+
+      // Calm, Warm, Low-Glare (2 + 2) Bell Cycle (Soft Marimba / Warm Appliance Chime)
+      function scheduleTwoPlusTwoCycle(ctx, cycleStartTime) {
+        // 2 gentle pulses (0.00s, 0.17s), short pause, then 2 gentle pulses (0.52s, 0.69s)
+        const offsets = [0.00, 0.17, 0.52, 0.69];
+        const toneDuration = 0.115;
+
+        // Low-pass filter removes all sharp/piercing upper frequencies
+        const masterFilter = ctx.createBiquadFilter();
+        masterFilter.type = 'lowpass';
+        masterFilter.frequency.setValueAtTime(980, cycleStartTime);
+        masterFilter.connect(ctx.destination);
+
+        offsets.forEach((offset, pulseIdx) => {
+          const startT = cycleStartTime + offset;
+          // Warm, calm fundamental at E5 (659.25 Hz) or D5 (587.33 Hz) with soft sub-octave D4 (293.66 Hz)
+          // Second pair has a gentle harmonic resolution so it feels soothing like a modern appliance chime
+          const baseFreq = pulseIdx < 2 ? 523.25 : 587.33; // C5 -> D5 warm soft chime
+          const subFreq = baseFreq * 0.5;
+
+          [baseFreq, subFreq].forEach((freq, layerIdx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, startT);
+
+            const peakGain = layerIdx === 0 ? 0.11 : 0.055;
+            // Smooth 16ms fade-in attack so there is zero sharp click, followed by a warm rounded release
+            gain.gain.setValueAtTime(0.0005, startT);
+            gain.gain.linearRampToValueAtTime(peakGain, startT + 0.016);
+            gain.gain.setValueAtTime(peakGain * 0.9, startT + 0.045);
+            gain.gain.exponentialRampToValueAtTime(0.0005, startT + toneDuration);
+
+            osc.connect(gain);
+            gain.connect(masterFilter);
+            osc.start(startT);
+            osc.stop(startT + toneDuration + 0.01);
+          });
+        });
+      }
+
+      // Test Bell plays ONE calm (2 + 2) sequence; Full End-of-Time Bell plays (2 + 2) + (2 + 2)!
+      function triggerExamBell(mode = 'full') {
+        if (mode === 'full' && !playEndBell) return;
+        try {
+          const ctx = getAudioContext();
+          const now = ctx.currentTime + 0.01;
+          scheduleTwoPlusTwoCycle(ctx, now);
+
+          if (mode === 'full') {
+            scheduleTwoPlusTwoCycle(ctx, now + 1.32);
+          }
+        } catch (e) {}
+      }
+
+      // --- 4. DOM Elements ---
       const wallClockSvg = document.getElementById('wallClockSvg');
       const hourArmGroup = document.getElementById('hourArmGroup');
       const minuteArmGroup = document.getElementById('minuteArmGroup');
@@ -1202,19 +1821,26 @@
 
       const statusDot = document.getElementById('statusDot');
       const statusPill = document.getElementById('statusPill');
+      const themeColorMeta = document.getElementById('themeColorMeta');
 
       const startStopBtn = document.getElementById('startStopBtn');
-      const startStopIcon = document.getElementById('startStopIcon');
+      const playSvgIcon = document.getElementById('playSvgIcon');
+      const stopSvgIcon = document.getElementById('stopSvgIcon');
       const startStopText = document.getElementById('startStopText');
       const resetToSavedBtn = document.getElementById('resetToSavedBtn');
       const quickToggleSecBtn = document.getElementById('quickToggleSecBtn');
+      const quickToggleSecText = document.getElementById('quickToggleSecText');
       const exitFullscreenDockBtn = document.getElementById('exitFullscreenDockBtn');
       const clockQuickBar = document.getElementById('clockQuickBar');
+      const bottomDockZone = document.getElementById('bottomDockZone');
 
       const hourInput = document.getElementById('hourInput');
       const minuteInput = document.getElementById('minuteInput');
       const secondInput = document.getElementById('secondInput');
       const setAsBookmarkBtn = document.getElementById('setAsBookmarkBtn');
+      const saveStartBookmarkIcon = document.getElementById('saveStartBookmarkIcon');
+      const saveStartCheckIcon = document.getElementById('saveStartCheckIcon');
+      const saveStartBtnText = document.getElementById('saveStartBtnText');
 
       const hourSlider = document.getElementById('hourSlider');
       const minuteSlider = document.getElementById('minuteSlider');
@@ -1224,19 +1850,73 @@
       const showSecondsToggle = document.getElementById('showSecondsToggle');
       const smoothSweepToggle = document.getElementById('smoothSweepToggle');
       const tickSoundToggle = document.getElementById('tickSoundToggle');
+      const testTickBtn = document.getElementById('testTickBtn');
+      const wakeLockToggle = document.getElementById('wakeLockToggle');
 
-      const examDurationSelect = document.getElementById('examDurationSelect');
+      const examDurHoursInput = document.getElementById('examDurHoursInput');
+      const examDurMinutesInput = document.getElementById('examDurMinutesInput');
+      const minus15Btn = document.getElementById('minus15Btn');
+      const plus15Btn = document.getElementById('plus15Btn');
+      const sessionModeLabel = document.getElementById('sessionModeLabel');
+
       const wbStartTime = document.getElementById('wbStartTime');
       const wbEndTime = document.getElementById('wbEndTime');
       const wbEndRow = document.getElementById('wbEndRow');
       const wbElapsed = document.getElementById('wbElapsed');
+      const wbRemainingRow = document.getElementById('wbRemainingRow');
+      const wbRemaining = document.getElementById('wbRemaining');
+      const examProgressTrack = document.getElementById('examProgressTrack');
+      const examProgressFill = document.getElementById('examProgressFill');
+
       const showTargetPinToggle = document.getElementById('showTargetPinToggle');
+      const endBellToggle = document.getElementById('endBellToggle');
+      const testBellBtn = document.getElementById('testBellBtn');
       const targetMarkerGroup = document.getElementById('targetMarkerGroup');
-      const targetPin = document.getElementById('targetPin');
+      const targetHourPin = document.getElementById('targetHourPin');
+      const targetMinutePin = document.getElementById('targetMinutePin');
 
       const fullscreenBtn = document.getElementById('fullscreenBtn');
+      const themeButtons = document.querySelectorAll('.theme-btn');
 
-      // --- 4. Helper Formatting & Normalization ---
+      function applyThemeToDOM(themeKey) {
+        document.body.setAttribute('data-theme', themeKey);
+        if (themeColorMeta && THEME_BG_COLORS[themeKey]) {
+          themeColorMeta.setAttribute('content', THEME_BG_COLORS[themeKey]);
+        }
+        themeButtons.forEach((b) => {
+          b.classList.toggle('active', b.getAttribute('data-theme-val') === themeKey);
+        });
+      }
+
+      // Apply loaded preferences to DOM controls
+      applyThemeToDOM(activeTheme);
+      showSecondsToggle.checked = showSecondsArm;
+      smoothSweepToggle.checked = smoothSweep;
+      tickSoundToggle.checked = playTickSound;
+      wakeLockToggle.checked = keepScreenAwake;
+      showTargetPinToggle.checked = showTargetPin;
+      endBellToggle.checked = playEndBell;
+      examDurHoursInput.value = Math.floor(examDurationMinutes / 60);
+      examDurMinutesInput.value = examDurationMinutes % 60;
+
+      // --- 5. Auto-Fit Single-Line Transport Bar Scaling ---
+      function fitTransportBarScale() {
+        const isFS = document.body.classList.contains('fullscreen-mode');
+        const containerWidth = isFS
+          ? window.innerWidth - 24
+          : Math.min(window.innerWidth - 28, bottomDockZone.clientWidth || window.innerWidth - 28);
+        const naturalWidth = clockQuickBar.offsetWidth;
+        if (naturalWidth > 0 && containerWidth > 0 && naturalWidth > containerWidth) {
+          const scale = Math.max(0.62, (containerWidth / naturalWidth) * 0.98);
+          document.documentElement.style.setProperty('--bar-scale', scale.toFixed(3));
+        } else {
+          document.documentElement.style.setProperty('--bar-scale', '1');
+        }
+      }
+
+      window.addEventListener('resize', fitTransportBarScale);
+
+      // --- 6. Helper Formatting & Normalization ---
       const TWELVE_HOURS = 12 * 3600;
 
       function normalizeSeconds(sec) {
@@ -1261,14 +1941,14 @@
       }
 
       function formatDuration(sec) {
-        const whole = Math.floor(sec);
+        const whole = Math.max(0, Math.floor(sec));
         const h = Math.floor(whole / 3600);
         const m = Math.floor((whole % 3600) / 60);
         const s = whole % 60;
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
       }
 
-      // --- 5. Render Clock Hands & UI ---
+      // --- 7. Render Clock Hands & UI ---
       function renderClock(updateInputs = true) {
         const { displayHour, minutes, seconds, frac } = decomposeTime(currentTotalSeconds);
 
@@ -1285,7 +1965,7 @@
         secondArmGroup.setAttribute('transform', `rotate(${secondAngle.toFixed(3)} 250 250)`);
 
         secondArmGroup.style.display = showSecondsArm ? 'block' : 'none';
-        quickToggleSecBtn.textContent = showSecondsArm ? 'Hide Seconds' : 'Show Seconds';
+        quickToggleSecText.textContent = showSecondsArm ? 'Hide Seconds' : 'Show Seconds';
         showSecondsToggle.checked = showSecondsArm;
 
         if (updateInputs) {
@@ -1305,25 +1985,59 @@
           minuteSliderVal.textContent = `${String(minutes).padStart(2, '0')} min`;
         }
 
+        // Update Exam Session Tracker
         wbStartTime.textContent = formatHMS(savedStartSeconds);
         wbElapsed.textContent = formatDuration(elapsedSeconds);
 
-        if (examDurationMinutes > 0) {
-          const finishSeconds = normalizeSeconds(savedStartSeconds + examDurationMinutes * 60);
+        const totalExamSeconds = examDurationMinutes * 60;
+        if (totalExamSeconds > 0) {
+          const finishSeconds = normalizeSeconds(savedStartSeconds + totalExamSeconds);
+          const remainingSec = Math.max(0, totalExamSeconds - elapsedSeconds);
+          const pct = Math.min(100, (elapsedSeconds / totalExamSeconds) * 100);
+
           wbEndRow.style.display = 'flex';
+          wbRemainingRow.style.display = 'flex';
+          examProgressTrack.style.display = 'block';
+
           wbEndTime.textContent = formatHMS(finishSeconds);
+          wbRemaining.textContent = formatDuration(remainingSec);
+          examProgressFill.style.width = `${pct.toFixed(1)}%`;
+
+          examProgressFill.classList.remove('near-end', 'finished');
+          if (remainingSec === 0 && elapsedSeconds >= totalExamSeconds) {
+            examProgressFill.classList.add('finished');
+            wbRemaining.style.color = 'var(--danger)';
+            if (isRunning) {
+              statusDot.classList.add('time-up');
+              statusPill.classList.add('time-up');
+              statusPill.textContent = 'Time Up · Exam Finished';
+              if (!bellAlreadyRung) {
+                bellAlreadyRung = true;
+                triggerExamBell('full');
+              }
+            }
+          } else if (remainingSec <= 600) {
+            examProgressFill.classList.add('near-end');
+            wbRemaining.style.color = 'var(--warning)';
+          } else {
+            wbRemaining.style.color = 'var(--text-main)';
+          }
 
           const finishDecomp = decomposeTime(finishSeconds);
           const finishHourAngle = ((finishDecomp.displayHour % 12) + finishDecomp.minutes / 60) * 30;
-          targetPin.setAttribute('transform', `rotate(${finishHourAngle.toFixed(2)} 250 250)`);
+          const finishMinuteAngle = (finishDecomp.minutes + finishDecomp.seconds / 60) * 6;
+          targetHourPin.setAttribute('transform', `rotate(${finishHourAngle.toFixed(2)} 250 250)`);
+          targetMinutePin.setAttribute('transform', `rotate(${finishMinuteAngle.toFixed(2)} 250 250)`);
           targetMarkerGroup.style.display = showTargetPin ? 'block' : 'none';
         } else {
           wbEndRow.style.display = 'none';
+          wbRemainingRow.style.display = 'none';
+          examProgressTrack.style.display = 'none';
           targetMarkerGroup.style.display = 'none';
         }
       }
 
-      // --- 6. Start / Stop High-Precision Loop & Arm Protection Lock ---
+      // --- 8. Start / Stop High-Precision Loop & Arm Protection Lock ---
       function setInputsLocked(locked) {
         document.body.classList.toggle('clock-running', locked);
         hourInput.disabled = locked;
@@ -1351,7 +2065,7 @@
         const currentWhole = Math.floor(currentTotalSeconds);
         if (currentWhole !== lastWholeSecond) {
           lastWholeSecond = currentWhole;
-          triggerTickSound();
+          triggerTickSound(false);
         }
 
         renderClock(true);
@@ -1360,21 +2074,25 @@
 
       function startClock() {
         if (isRunning) return;
-        // Cancel any active arm drag immediately and lock all arms
         endArmDrag();
         isRunning = true;
         setInputsLocked(true);
+        requestWakeLock();
 
         lastFrameTime = performance.now();
         lastWholeSecond = Math.floor(currentTotalSeconds);
 
+        statusDot.classList.remove('time-up');
+        statusPill.classList.remove('time-up');
         statusDot.classList.add('running');
         statusPill.classList.add('running');
         statusPill.textContent = 'Running · Arms Locked';
 
         startStopBtn.classList.add('stop-state');
-        startStopIcon.textContent = '⏸';
+        playSvgIcon.style.display = 'none';
+        stopSvgIcon.style.display = 'inline-block';
         startStopText.textContent = 'Stop Clock';
+        fitTransportBarScale();
 
         rafId = requestAnimationFrame(tickLoop);
       }
@@ -1383,18 +2101,23 @@
         if (!isRunning) return;
         isRunning = false;
         setInputsLocked(false);
+        if (!document.body.classList.contains('fullscreen-mode')) {
+          releaseWakeLock();
+        }
 
         if (rafId) cancelAnimationFrame(rafId);
         rafId = null;
         lastFrameTime = null;
 
-        statusDot.classList.remove('running');
-        statusPill.classList.remove('running');
+        statusDot.classList.remove('running', 'time-up');
+        statusPill.classList.remove('running', 'time-up');
         statusPill.textContent = 'Stopped · Ready to Set';
 
         startStopBtn.classList.remove('stop-state');
-        startStopIcon.textContent = '▶';
+        playSvgIcon.style.display = 'inline-block';
+        stopSvgIcon.style.display = 'none';
         startStopText.textContent = 'Start Clock';
+        fitTransportBarScale();
 
         renderClock(true);
       }
@@ -1407,7 +2130,7 @@
         }
       }
 
-      // --- 7. Direct Dragging of Hours, Minutes, and Seconds Arms (Protected When Running) ---
+      // --- 9. Direct Dragging of Hours, Minutes, and Seconds Arms (Protected When Running) ---
       let draggingArm = null;
       let prevDragAngle = null;
 
@@ -1425,7 +2148,6 @@
       }
 
       function beginArmDrag(armType, groupEl, evt) {
-        // Protection: Cannot move any arm while clock is started!
         if (isRunning) return;
         evt.preventDefault();
         evt.stopPropagation();
@@ -1474,6 +2196,8 @@
 
         savedStartSeconds = currentTotalSeconds;
         elapsedSeconds = 0;
+        bellAlreadyRung = false;
+        savePersistentState();
         renderClock(true);
       }
 
@@ -1491,7 +2215,7 @@
       window.addEventListener('mouseup', endArmDrag);
       window.addEventListener('touchend', endArmDrag);
 
-      // --- 8. Numeric Inputs, Sliders & Presets (Protected When Running) ---
+      // --- 10. Numeric Inputs, Sliders, Presets & Persistent "Save Start" ---
       function applyManualTime(h, m, s) {
         if (isRunning) return;
         const cleanH = Math.max(1, Math.min(12, parseInt(h, 10) || 12));
@@ -1500,6 +2224,8 @@
         currentTotalSeconds = (cleanH % 12) * 3600 + cleanM * 60 + cleanS;
         savedStartSeconds = currentTotalSeconds;
         elapsedSeconds = 0;
+        bellAlreadyRung = false;
+        savePersistentState();
         renderClock(true);
       }
 
@@ -1538,37 +2264,88 @@
         applyManualTime(h, m, s);
       });
 
+      let saveFlashTimer = null;
       setAsBookmarkBtn.addEventListener('click', () => {
         if (isRunning) return;
         savedStartSeconds = currentTotalSeconds;
         elapsedSeconds = 0;
+        bellAlreadyRung = false;
+        savePersistentState();
         renderClock(true);
+
+        setAsBookmarkBtn.classList.add('saved-flash');
+        saveStartBookmarkIcon.style.display = 'none';
+        saveStartCheckIcon.style.display = 'inline-block';
+        saveStartBtnText.textContent = 'Saved';
+        if (saveFlashTimer) clearTimeout(saveFlashTimer);
+        saveFlashTimer = setTimeout(() => {
+          setAsBookmarkBtn.classList.remove('saved-flash');
+          saveStartBookmarkIcon.style.display = 'inline-block';
+          saveStartCheckIcon.style.display = 'none';
+          saveStartBtnText.textContent = 'Save Start';
+        }, 1400);
       });
 
-      // --- 9. Themes Switching ---
-      const themeButtons = document.querySelectorAll('.theme-btn');
+      // --- 11. Editable Exam Session Duration (Hours & Minutes Fields + +/-15m) ---
+      function syncDurationFromFields() {
+        const hrs = Math.max(0, Math.min(12, parseInt(examDurHoursInput.value, 10) || 0));
+        const mins = Math.max(0, Math.min(59, parseInt(examDurMinutesInput.value, 10) || 0));
+        examDurationMinutes = hrs * 60 + mins;
+        bellAlreadyRung = false;
+        if (examDurationMinutes === 0) {
+          sessionModeLabel.textContent = 'Free Practice';
+        } else {
+          sessionModeLabel.textContent = `${hrs > 0 ? hrs + 'h ' : ''}${mins > 0 ? mins + 'm' : ''}`.trim();
+        }
+        savePersistentState();
+        renderClock(false);
+      }
+
+      function setDurationMinutes(totalMins) {
+        const clamped = Math.max(0, Math.min(12 * 60, totalMins));
+        const hrs = Math.floor(clamped / 60);
+        const mins = clamped % 60;
+        examDurHoursInput.value = hrs;
+        examDurMinutesInput.value = mins;
+        syncDurationFromFields();
+      }
+
+      examDurHoursInput.addEventListener('input', syncDurationFromFields);
+      examDurMinutesInput.addEventListener('input', syncDurationFromFields);
+
+      minus15Btn.addEventListener('click', () => {
+        setDurationMinutes(examDurationMinutes - 15);
+      });
+
+      plus15Btn.addEventListener('click', () => {
+        setDurationMinutes(examDurationMinutes + 15);
+      });
+
+      // --- 12. Themes Switching ---
       themeButtons.forEach((btn) => {
         btn.addEventListener('click', () => {
-          const themeVal = btn.getAttribute('data-theme-val');
-          document.body.setAttribute('data-theme', themeVal);
-          themeButtons.forEach((b) => b.classList.remove('active'));
-          btn.classList.add('active');
+          activeTheme = btn.getAttribute('data-theme-val');
+          applyThemeToDOM(activeTheme);
+          savePersistentState();
         });
       });
 
-      // --- 10. Transport & Arm Visibility Controls ---
+      // --- 13. Transport & Arm Visibility Controls ---
       startStopBtn.addEventListener('click', toggleStartStop);
 
       resetToSavedBtn.addEventListener('click', () => {
         stopClock();
         currentTotalSeconds = savedStartSeconds;
         elapsedSeconds = 0;
+        bellAlreadyRung = false;
         renderClock(true);
       });
 
       function setSecondsVisibility(visible) {
         showSecondsArm = visible;
+        savePersistentState();
         renderClock(false);
+        fitTransportBarScale();
       }
 
       showSecondsToggle.addEventListener('change', (e) => setSecondsVisibility(e.target.checked));
@@ -1576,73 +2353,137 @@
 
       smoothSweepToggle.addEventListener('change', (e) => {
         smoothSweep = e.target.checked;
+        savePersistentState();
         renderClock(false);
       });
 
       tickSoundToggle.addEventListener('change', (e) => {
         playTickSound = e.target.checked;
-        if (playTickSound) triggerTickSound();
+        savePersistentState();
+        if (playTickSound) triggerTickSound(true);
       });
 
-      examDurationSelect.addEventListener('change', (e) => {
-        examDurationMinutes = parseInt(e.target.value, 10);
-        renderClock(false);
+      testTickBtn.addEventListener('click', () => {
+        triggerTickSound(true);
+      });
+
+      wakeLockToggle.addEventListener('change', (e) => {
+        keepScreenAwake = e.target.checked;
+        savePersistentState();
+        if (keepScreenAwake && isRunning) {
+          requestWakeLock();
+        } else if (!keepScreenAwake) {
+          releaseWakeLock();
+        }
       });
 
       showTargetPinToggle.addEventListener('change', (e) => {
         showTargetPin = e.target.checked;
+        savePersistentState();
         renderClock(false);
       });
 
-      // --- 11. Pure Clock Fullscreen & Bottom-of-Clock Pointer Proximity Detection ---
+      endBellToggle.addEventListener('change', (e) => {
+        playEndBell = e.target.checked;
+        savePersistentState();
+      });
+
+      // Test Bell plays strictly ONE calm (2 + 2) sequence
+      testBellBtn.addEventListener('click', () => {
+        triggerExamBell('test');
+      });
+
+      // --- 14. Pure Clock Fullscreen: 1 Click Shows Panel, Another Click Hides It (Or Auto-Hides After Duration) ---
+      let dockAutoHideTimer = null;
+      const DOCK_AUTO_HIDE_MS = 3500;
+
+      function resetDockAutoHideTimer() {
+        if (dockAutoHideTimer) clearTimeout(dockAutoHideTimer);
+        dockAutoHideTimer = setTimeout(() => {
+          clockQuickBar.classList.remove('dock-visible');
+          dockAutoHideTimer = null;
+        }, DOCK_AUTO_HIDE_MS);
+      }
+
+      function showFullscreenDock() {
+        if (!document.body.classList.contains('fullscreen-mode')) return;
+        clockQuickBar.classList.add('dock-visible');
+        fitTransportBarScale();
+        resetDockAutoHideTimer();
+      }
+
+      function hideFullscreenDock() {
+        clockQuickBar.classList.remove('dock-visible');
+        if (dockAutoHideTimer) {
+          clearTimeout(dockAutoHideTimer);
+          dockAutoHideTimer = null;
+        }
+      }
+
       function enterPureFullscreen() {
         document.body.classList.add('fullscreen-mode');
-        clockQuickBar.classList.remove('dock-visible');
+        hideFullscreenDock();
+        requestWakeLock();
+        setTimeout(fitTransportBarScale, 50);
         if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen().catch(() => {});
+          // Request edge-to-edge system bar hiding (`navigationUI: "hide"`)
+          document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
         }
       }
 
       function exitPureFullscreen() {
         document.body.classList.remove('fullscreen-mode');
-        clockQuickBar.classList.remove('dock-visible');
+        hideFullscreenDock();
+        if (!isRunning) releaseWakeLock();
+        setTimeout(fitTransportBarScale, 50);
         if (document.fullscreenElement && document.exitFullscreen) {
           document.exitFullscreen().catch(() => {});
         }
       }
 
-      fullscreenBtn.addEventListener('click', enterPureFullscreen);
-      exitFullscreenDockBtn.addEventListener('click', exitPureFullscreen);
+      fullscreenBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        enterPureFullscreen();
+      });
+
+      exitFullscreenDockBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        exitPureFullscreen();
+      });
 
       document.addEventListener('fullscreenchange', () => {
         if (!document.fullscreenElement) {
           document.body.classList.remove('fullscreen-mode');
-          clockQuickBar.classList.remove('dock-visible');
+          hideFullscreenDock();
         } else {
           document.body.classList.add('fullscreen-mode');
         }
+        setTimeout(fitTransportBarScale, 50);
       });
 
-      // Show bottom dock ONLY when pointer moves down below the clock (bottom ~18% of screen or under clock bottom edge)
-      window.addEventListener('mousemove', (e) => {
+      // Toggle behavior in Fullscreen Mode:
+      // - If panel is hidden: 1 click/tap anywhere shows the panel and starts the 3.5s auto-hide timer.
+      // - If panel is visible:
+      //     * Clicking/tapping outside the panel immediately hides it!
+      //     * Clicking inside the panel (e.g. Start/Stop or Reset) performs the button action and resets the 3.5s timer.
+      window.addEventListener('pointerdown', (e) => {
         if (!document.body.classList.contains('fullscreen-mode')) return;
-        const clockRect = wallClockSvg.getBoundingClientRect();
-        const triggerTop = Math.min(window.innerHeight - 110, clockRect.bottom - 10);
-        const isNearBottomUnderClock =
-          e.clientY >= triggerTop &&
-          e.clientX >= (clockRect.left - 80) &&
-          e.clientX <= (clockRect.right + 80);
+        if (e.target.closest('#exitFullscreenDockBtn')) return;
 
-        if (isNearBottomUnderClock) {
-          clockQuickBar.classList.add('dock-visible');
+        // If user is dragging an arm while clock is stopped, don't toggle the dock
+        if (!isRunning && e.target.closest('.draggable-arm')) return;
+
+        const isDockVisible = clockQuickBar.classList.contains('dock-visible');
+        const clickedInsideBar = clockQuickBar.contains(e.target);
+
+        if (!isDockVisible) {
+          showFullscreenDock();
+        } else if (clickedInsideBar) {
+          // Keep visible while interacting with buttons, then auto-hide when duration ends
+          resetDockAutoHideTimer();
         } else {
-          clockQuickBar.classList.remove('dock-visible');
-        }
-      });
-
-      document.addEventListener('mouseleave', () => {
-        if (document.body.classList.contains('fullscreen-mode')) {
-          clockQuickBar.classList.remove('dock-visible');
+          // Second click outside the panel hides it immediately
+          hideFullscreenDock();
         }
       });
 
@@ -1657,6 +2498,7 @@
           stopClock();
           currentTotalSeconds = savedStartSeconds;
           elapsedSeconds = 0;
+          bellAlreadyRung = false;
           renderClock(true);
         } else if (e.key === 'Escape' && document.body.classList.contains('fullscreen-mode')) {
           exitPureFullscreen();
@@ -1664,7 +2506,9 @@
       });
 
       // Initial render
+      syncDurationFromFields();
       renderClock(true);
+      setTimeout(fitTransportBarScale, 30);
     })();
   </script>
 </body>
